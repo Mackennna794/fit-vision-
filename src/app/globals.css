@@ -1,0 +1,241 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   FITVISION DESIGN SYSTEM — GLOBAL STYLES
+   Strict Light Mode Only per Architectural Directive
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+:root {
+  /* Brand Colors */
+  --fv-alabaster: #F8F9FA;
+  --fv-white: #FFFFFF;
+  --fv-border: #E2E8F0;
+  --fv-border-light: #F1F5F9;
+  --fv-obsidian: #0F172A;
+  --fv-slate: #334155;
+  --fv-muted: #64748B;
+  --fv-cobalt: #2563EB;
+  --fv-cobalt-light: #3B82F6;
+  --fv-cobalt-dark: #1D4ED8;
+  --fv-cobalt-glow: rgba(37, 99, 235, 0.12);
+  --fv-chrome: #CBD5E1;
+  --fv-chrome-light: #F1F5F9;
+
+  /* Semantic */
+  --background: #F8F9FA;
+  --foreground: #0F172A;
+  --surface: #FFFFFF;
+
+  /* Spacing */
+  --header-height: 68px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 3px rgba(15,23,42,0.06), 0 1px 2px rgba(15,23,42,0.04);
+  --shadow-md: 0 4px 12px rgba(15,23,42,0.08), 0 2px 4px rgba(15,23,42,0.04);
+  --shadow-lg: 0 8px 32px rgba(15,23,42,0.10), 0 4px 8px rgba(15,23,42,0.06);
+  --shadow-xl: 0 20px 60px rgba(15,23,42,0.12), 0 8px 20px rgba(15,23,42,0.08);
+}
+
+/* Force light mode — never inherit OS dark preference */
+html {
+  color-scheme: light only;
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  background-color: var(--fv-alabaster);
+  color: var(--fv-obsidian);
+  font-family: 'Inter', var(--font-geist-sans), system-ui, sans-serif;
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+/* ============================================================
+   SCROLLBAR STYLING
+   ============================================================ */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--fv-chrome);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--fv-muted); }
+
+/* ============================================================
+   SELECTION
+   ============================================================ */
+::selection {
+  background: rgba(37, 99, 235, 0.15);
+  color: var(--fv-cobalt-dark);
+}
+
+/* ============================================================
+   FOCUS RING
+   ============================================================ */
+:focus-visible {
+  outline: 2px solid var(--fv-cobalt);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ============================================================
+   TYPOGRAPHY UTILITIES
+   ============================================================ */
+@layer utilities {
+  .text-balance { text-wrap: balance; }
+  .text-pretty { text-wrap: pretty; }
+
+  /* Chrome/metallic text gradient */
+  .text-chrome {
+    background: linear-gradient(135deg, #94A3B8 0%, #CBD5E1 40%, #F8FAFC 60%, #CBD5E1 80%, #94A3B8 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Cobalt gradient text */
+  .text-cobalt-gradient {
+    background: linear-gradient(135deg, #2563EB 0%, #3B82F6 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Glass morphism surface */
+  .glass {
+    background: rgba(255, 255, 255, 0.80);
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    border: 1px solid rgba(226, 232, 240, 0.80);
+  }
+
+  .glass-strong {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(24px) saturate(200%);
+    -webkit-backdrop-filter: blur(24px) saturate(200%);
+    border: 1px solid rgba(226, 232, 240, 0.90);
+  }
+
+  /* FV surface card */
+  .fv-card {
+    background: var(--fv-white);
+    border: 1px solid var(--fv-border);
+    border-radius: 16px;
+    box-shadow: var(--shadow-sm);
+    transition: box-shadow 0.25s ease, transform 0.25s ease;
+  }
+
+  .fv-card:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+  }
+
+  /* Cobalt button */
+  .btn-cobalt {
+    background: var(--fv-cobalt);
+    color: white;
+    border-radius: 10px;
+    padding: 12px 24px;
+    font-weight: 600;
+    font-size: 0.9375rem;
+    letter-spacing: -0.01em;
+    transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
+    box-shadow: 0 2px 8px rgba(37,99,235,0.30);
+  }
+
+  .btn-cobalt:hover {
+    background: var(--fv-cobalt-dark);
+    box-shadow: 0 4px 16px rgba(37,99,235,0.40);
+    transform: translateY(-1px);
+  }
+
+  .btn-cobalt:active { transform: translateY(0); }
+
+  /* Ghost button */
+  .btn-ghost {
+    background: transparent;
+    color: var(--fv-slate);
+    border: 1px solid var(--fv-border);
+    border-radius: 10px;
+    padding: 11px 24px;
+    font-weight: 500;
+    font-size: 0.9375rem;
+    transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+  }
+
+  .btn-ghost:hover {
+    background: var(--fv-chrome-light);
+    color: var(--fv-obsidian);
+    border-color: #CBD5E1;
+  }
+
+  /* Shimmer loading bar */
+  .shimmer-bar {
+    background: linear-gradient(90deg, transparent 0%, rgba(37,99,235,0.08) 50%, transparent 100%);
+    background-size: 200% 100%;
+    animation: shimmer 2.5s linear infinite;
+  }
+
+  /* Dot grid background */
+  .dot-grid {
+    background-image: radial-gradient(circle, #CBD5E1 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+
+  /* FV decorative line */
+  .fv-line {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--fv-border), transparent);
+  }
+}
+
+/* ============================================================
+   KEYFRAME ANIMATIONS
+   ============================================================ */
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+
+@keyframes fadeUp {
+  0%   { opacity: 0; transform: translateY(24px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleIn {
+  0%   { opacity: 0; transform: scale(0.94); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes floatY {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-10px); }
+}
+
+@keyframes drawPath {
+  0%   { stroke-dashoffset: 600; }
+  100% { stroke-dashoffset: 0; }
+}
+
+@keyframes rotateFV {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* ============================================================
+   COMMAND PALETTE BACKDROP
+   ============================================================ */
+.cmd-backdrop {
+  background: rgba(15, 23, 42, 0.40);
+  backdrop-filter: blur(8px);
+}
