@@ -133,17 +133,16 @@ export default function LogoEntrance() {
             </defs>
           </svg>
 
-          {/* FV text inside emblem */}
-          <div className="w-[72px] h-[72px] flex items-center justify-center relative z-10">
-            <motion.span
-              className="text-[22px] font-black tracking-tighter text-fv-obsidian"
-              style={{ fontFamily: "var(--font-inter)" }}
+          {/* 3D Metallic FV Logo Image inside emblem */}
+          <div className="w-[72px] h-[72px] flex items-center justify-center relative z-10 p-1">
+            <motion.img
+              src="/fitvision-logo.png"
+              alt="FitVision Metallic Logo"
+              className="w-14 h-14 object-contain rounded-xl shadow-lg shadow-blue-500/30"
               initial={{ opacity: 0, scale: 0.6 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.4, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-            >
-              FV
-            </motion.span>
+            />
           </div>
         </div>
 

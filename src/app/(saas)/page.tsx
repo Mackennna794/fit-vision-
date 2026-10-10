@@ -20,6 +20,7 @@ import NarrativeScroll from "@/components/saas/NarrativeScroll";
 import BentoGrid from "@/components/saas/BentoGrid";
 import PricingModal from "@/components/saas/PricingModal";
 import UniversalTryOnModal, { ARProduct } from "@/components/ar/UniversalTryOnModal";
+import { ProductReviewsSection } from "@/components/store/ProductReviewsSection";
 
 // ─── Hero metrics ─────────────────────────────────────────────────────────────
 const HERO_METRICS = [
@@ -582,13 +583,12 @@ function Footer() {
     >
       <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-2.5">
-          <div
-            className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-[11px] font-black"
-            style={{ background: "linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)" }}
-          >
-            FV
-          </div>
-          <span className="text-[14px] font-bold text-fv-obsidian">FitVision</span>
+          <img
+            src="/fitvision-logo.png"
+            alt="FitVision Logo"
+            className="w-7 h-7 object-contain rounded-lg shadow-sm"
+          />
+          <span className="text-[15px] font-extrabold text-fv-obsidian">FitVision</span>
           <span className="text-[12px] text-fv-muted">
             © 2026 · Hackathon Edition
           </span>
@@ -660,6 +660,11 @@ export default function FitVisionPage() {
 
         {/* Tri-Product Bento */}
         <BentoGrid onTryOn={(product) => handleOpenTryOn(product as ARProduct)} />
+
+        {/* Social Circle Friend Reviews & AI Fake Review Guard Showcase */}
+        <section className="max-w-7xl mx-auto px-6 py-12">
+          <ProductReviewsSection productName="FitVision Retail Engine" />
+        </section>
 
         {/* Pricing Section */}
         <PricingSection onOpenPricing={() => setPricingOpen(true)} />
