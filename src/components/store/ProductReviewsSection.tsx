@@ -20,6 +20,7 @@ import {
   DollarSign,
   Search,
 } from 'lucide-react';
+import FitVisionLogo from '../common/FitVisionLogo';
 
 export interface ReviewItem {
   id: string;
@@ -321,13 +322,9 @@ export const ProductReviewsSection: React.FC<ProductReviewsSectionProps> = ({
       {/* Header Banner with Metallic 3D FitVision Logo */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-slate-800/80 pb-6">
         <div className="flex items-center gap-3.5">
-          {/* Official Metallic 3D Logo Image */}
+          {/* Official Metallic 3D Logo Component */}
           <div className="relative group flex-shrink-0">
-            <img
-              src="/fitvision-logo.png"
-              alt="FitVision 3D Logo"
-              className="w-12 h-12 object-contain rounded-2xl shadow-xl shadow-blue-500/25 ring-1 ring-white/10 group-hover:scale-105 transition-transform"
-            />
+            <FitVisionLogo size="lg" />
             <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-emerald-400 rounded-full ring-2 ring-slate-900 animate-pulse" />
           </div>
 
@@ -612,7 +609,7 @@ export const ProductReviewsSection: React.FC<ProductReviewsSectionProps> = ({
           <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 w-full max-w-lg shadow-2xl space-y-5 relative">
             <div className="flex items-center justify-between border-b border-slate-800 pb-4">
               <div className="flex items-center gap-3">
-                <img src="/fitvision-logo.png" alt="FitVision Logo" className="w-8 h-8 object-contain rounded-lg" />
+                <FitVisionLogo size="sm" />
                 <h4 className="font-extrabold text-base text-white">Submit a Product Review</h4>
               </div>
               <button

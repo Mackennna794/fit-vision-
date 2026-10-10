@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { Command, Store, LayoutDashboard, Zap } from "lucide-react";
 import CommandPalette from "./CommandPalette";
 import Link from "next/link";
+import FitVisionLogo from "../common/FitVisionLogo";
 
 interface HeaderProps {
   onOpenPricing?: () => void;
@@ -54,19 +55,9 @@ export default function Header({ onOpenPricing }: HeaderProps) {
         }}
         role="banner"
       >
-        {/* FitVision Official Metallic FV Logo Mark */}
+        {/* FitVision Official Logo Mark */}
         <Link href="/" className="flex items-center gap-2.5 group" aria-label="FitVision home">
-          <img
-            src="/fitvision-logo.png"
-            alt="FitVision Logo"
-            className="w-9 h-9 object-contain rounded-xl shadow-md shadow-blue-500/20 group-hover:scale-105 transition-transform duration-200"
-          />
-          <span
-            className="text-[18px] font-extrabold tracking-[-0.03em] bg-clip-text text-transparent bg-gradient-to-r from-slate-900 via-blue-900 to-slate-900"
-            style={{ fontFamily: "var(--font-inter)" }}
-          >
-            FitVision
-          </span>
+          <FitVisionLogo variant="navbar" size="md" showText />
         </Link>
 
         {/* Center nav with required links */}

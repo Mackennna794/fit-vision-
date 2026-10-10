@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { motion, useAnimation, useInView } from "framer-motion";
+import FitVisionLogo from "../common/FitVisionLogo";
 
 // ─── Stage 1: Individual letters drop in ──────────────────────────────────────
 const SPRING: [number, number, number, number] = [0.16, 1, 0.3, 1];
@@ -133,16 +134,9 @@ export default function LogoEntrance() {
             </defs>
           </svg>
 
-          {/* 3D Metallic FV Logo Image inside emblem */}
+          {/* 3D Metallic FV Logo Image inside emblem with Error Boundary Fallback */}
           <div className="w-[72px] h-[72px] flex items-center justify-center relative z-10 p-1">
-            <motion.img
-              src="/fitvision-logo.png"
-              alt="FitVision Metallic Logo"
-              className="w-14 h-14 object-contain rounded-xl shadow-lg shadow-blue-500/30"
-              initial={{ opacity: 0, scale: 0.6 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.4, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-            />
+            <FitVisionLogo variant="hero" size="lg" />
           </div>
         </div>
 

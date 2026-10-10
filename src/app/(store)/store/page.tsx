@@ -16,6 +16,7 @@ import { ARProduct } from "@/components/ar/UniversalTryOnModal";
 import SkinToneSelector, { SKIN_TONES, SkinToneData, ColorOption } from "@/components/ar/SkinToneSelector";
 import CartDrawer, { CartItem } from "@/components/store/CartDrawer";
 import { ProductReviewsSection } from "@/components/store/ProductReviewsSection";
+import FitVisionLogo from "@/components/common/FitVisionLogo";
 import Link from "next/link";
 
 // SSR Bypass for AR Try-On Modal
@@ -284,14 +285,7 @@ export default function AuraMartStorefront() {
         <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link href="/" className="flex items-center gap-2 group" title="Return to FitVision Home">
-              <img
-                src="/fitvision-logo.png"
-                alt="FitVision Logo"
-                className="w-8 h-8 object-contain rounded-lg shadow-sm group-hover:scale-105 transition-transform"
-              />
-              <span className="text-base font-extrabold tracking-tight text-slate-900">
-                Fit<span className="text-blue-600">Vision</span>
-              </span>
+              <FitVisionLogo size="sm" showText />
             </Link>
             <span className="text-slate-300">/</span>
             <span className="text-sm font-black tracking-tighter text-slate-800 font-mono">
