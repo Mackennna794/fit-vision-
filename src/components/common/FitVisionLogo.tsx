@@ -1,12 +1,11 @@
 'use client';
 
 /**
- * Bulletproof FitVision Branding Logo Component with Strict Error Boundary Fallback
- * Guarantees zero broken image icons, browser placeholder squares, or alt text overflow.
+ * Clean Minimalist 2D Vector Logo Component for FitVision
+ * Lightweight, high-tech, fast-loading, zero 3D distortion.
  */
 
 import React, { useState } from 'react';
-import { Sparkles, Eye, Zap } from 'lucide-react';
 
 interface FitVisionLogoProps {
   variant?: 'navbar' | 'hero' | 'review' | 'footer' | 'inline';
@@ -27,45 +26,47 @@ export const FitVisionLogo: React.FC<FitVisionLogoProps> = ({
 
   // Size dimensions mapping
   const sizeStyles = {
-    sm: { img: 'w-7 h-7', icon: 'w-7 h-7', text: 'text-sm' },
-    md: { img: 'w-9 h-9', icon: 'w-9 h-9', text: 'text-base font-extrabold' },
-    lg: { img: 'w-12 h-12', icon: 'w-12 h-12', text: 'text-2xl font-black' },
-    xl: { img: 'w-14 h-14', icon: 'w-14 h-14', text: 'text-3xl font-black' },
+    sm: { box: 'w-7 h-7', text: 'text-sm' },
+    md: { box: 'w-9 h-9', text: 'text-base font-extrabold' },
+    lg: { box: 'w-12 h-12', text: 'text-2xl font-black' },
+    xl: { box: 'w-14 h-14', text: 'text-3xl font-black' },
   }[size];
 
-  // Render High-Tech Badge Fallback Component when image fails or returns 404
-  const renderFallbackBadge = () => {
-    if (variant === 'hero' || size === 'lg' || size === 'xl') {
-      return (
-        <div
-          className={`w-12 h-12 rounded-full bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-600 shadow-inner backdrop-blur-md ${className}`}
-        >
-          <Eye className="w-6 h-6 text-blue-600" />
-        </div>
-      );
-    }
-
-    // Default Navbar / Compact Badge
-    return (
-      <div
-        className={`w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-blue-700 flex items-center justify-center text-white shadow-sm ring-1 ring-blue-500/20 font-black text-xs tracking-tighter ${className}`}
+  // Pure 2D Minimalist Vector SVG Logo Mark
+  const renderMinimalistSvg = () => (
+    <div
+      className={`rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-sm ring-1 ring-blue-500/20 group-hover:scale-105 transition-all duration-200 ${sizeStyles.box} ${className}`}
+    >
+      <svg
+        viewBox="0 0 40 40"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        className="w-full h-full p-1.5"
       >
-        <span>FV</span>
-      </div>
-    );
-  };
+        <path
+          d="M10 10H28V14H16V18H25V22H16V30H10V10Z"
+          fill="white"
+        />
+        <path
+          d="M21 14L26 30H30L35 14H30L28 22L26 14H21Z"
+          fill="#93C5FD"
+        />
+        <circle cx="30" cy="10" r="2.5" fill="#38BDF8" />
+      </svg>
+    </div>
+  );
 
   return (
-    <div className="inline-flex items-center gap-2.5 select-none">
+    <div className="inline-flex items-center gap-2.5 select-none group">
       {!imageError ? (
         <img
-          src="/logo.png"
-          alt="FitVision Logo"
+          src="/logo.svg"
+          alt="FitVision 2D Logo"
           onError={() => setImageError(true)}
-          className={`object-contain rounded-xl transition-all ${sizeStyles.img} ${className}`}
+          className={`object-contain transition-transform duration-200 ${sizeStyles.box} ${className}`}
         />
       ) : (
-        renderFallbackBadge()
+        renderMinimalistSvg()
       )}
 
       {showText && (
