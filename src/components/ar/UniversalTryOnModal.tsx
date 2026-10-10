@@ -82,7 +82,7 @@ const DEMO_GARMENTS: ARProduct[] = [
   },
   {
     id: "g6",
-    name: "Futuristic Cyber Goggles",
+    name: "Aviator Cyber Sunglasses",
     category: "eyewear",
     price: 79,
     image_url: "https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=600&q=80",
@@ -143,6 +143,9 @@ export default function UniversalTryOnModal({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const poseTrackerRef = useRef<PoseTracker | null>(null);
   const animFrameIdRef = useRef<number | null>(null);
+
+  // EMA Smoothing filter state (alpha = 0.65)
+  const smoothedLandmarksRef = useRef<NormalizedLandmark[] | null>(null);
 
   // Active product & selection states
   const [activeProduct, setActiveProduct] = useState<ARProduct>(
@@ -217,8 +220,31 @@ export default function UniversalTryOnModal({
       }
       if (animFrameIdRef.current) cancelAnimationFrame(animFrameIdRef.current);
       tracker.destroy();
+      smoothedLandmarksRef.current = null;
     };
   }, [isOpen]);
+
+  // Exponential Moving Average (EMA) Coordinate Smoothing (alpha = 0.65)
+  const applyEMA = useCallback((raw: NormalizedLandmark[]): NormalizedLandmark[] => {
+    const alpha = 0.65;
+    if (!smoothedLandmarksRef.current || smoothedLandmarksRef.current.length !== raw.length) {
+      smoothedLandmarksRef.current = raw.map((lm) => ({ ...lm }));
+      return smoothedLandmarksRef.current;
+    }
+
+    const smoothed = raw.map((curr, i) => {
+      const prev = smoothedLandmarksRef.current![i];
+      return {
+        x: alpha * curr.x + (1 - alpha) * (prev ? prev.x : curr.x),
+        y: alpha * curr.y + (1 - alpha) * (prev ? prev.y : curr.y),
+        z: alpha * (curr.z || 0) + (1 - alpha) * ((prev && prev.z) || 0),
+        visibility: curr.visibility,
+      };
+    });
+
+    smoothedLandmarksRef.current = smoothed;
+    return smoothed;
+  }, []);
 
   // ─── 2. ANATOMICAL PROCEDURAL VECTOR RENDERERS ──────────────────────────────
   // T-SHIRT RENDERER
@@ -232,7 +258,7 @@ export default function UniversalTryOnModal({
       const torsoPx = Math.hypot(mh.x - ms.x, mh.y - ms.y);
       if (shPx < 10) return;
 
-      const borderShade = shadeColor(color, -40);
+      const borderShade = shadeColor(color, -25);
       const collarShade = shadeColor(color, 25);
 
       ctx.save();
@@ -244,27 +270,28 @@ export default function UniversalTryOnModal({
       ctx.beginPath();
       const collarY = ms.y - torsoPx * 0.06;
       ctx.moveTo(ls.x, ls.y);
+      // Rounded crewneck cutout curve
       ctx.quadraticCurveTo(ms.x, collarY + torsoPx * 0.14, rs.x, rs.y);
 
-      // Short Sleeves
-      const rSleeveTip = { x: rs.x + (re.x - rs.x) * 0.42, y: rs.y + (re.y - rs.y) * 0.42 };
+      // Short sleeves extending halfway along vectors 12->14 and 11->13
+      const rSleeveTip = { x: rs.x + (re.x - rs.x) * 0.5, y: rs.y + (re.y - rs.y) * 0.5 };
       ctx.lineTo(rSleeveTip.x, rSleeveTip.y);
       const rArmpit = { x: rs.x + (rh.x - rs.x) * 0.18, y: rs.y + (rh.y - rs.y) * 0.2 };
       ctx.lineTo(rArmpit.x, rArmpit.y);
       ctx.lineTo(rh.x, rh.y);
 
-      // Hemline
+      // Tapered flank lines down to hip level
       ctx.quadraticCurveTo(mh.x, mh.y + 12, lh.x, lh.y);
       const lArmpit = { x: ls.x + (lh.x - ls.x) * 0.18, y: ls.y + (lh.y - ls.y) * 0.2 };
       ctx.lineTo(lArmpit.x, lArmpit.y);
-      const lSleeveTip = { x: ls.x + (le.x - ls.x) * 0.42, y: ls.y + (le.y - ls.y) * 0.42 };
+      const lSleeveTip = { x: ls.x + (le.x - ls.x) * 0.5, y: ls.y + (le.y - ls.y) * 0.5 };
       ctx.lineTo(lSleeveTip.x, lSleeveTip.y);
       ctx.lineTo(ls.x, ls.y);
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
 
-      // Collar Detail
+      // Crewneck Collar Cutout Detail
       ctx.beginPath();
       ctx.moveTo(ls.x, ls.y);
       ctx.quadraticCurveTo(ms.x, collarY + torsoPx * 0.16, rs.x, rs.y);
@@ -277,7 +304,7 @@ export default function UniversalTryOnModal({
     []
   );
 
-  // HOODIE RENDERER (With Hood Curve, Kangaroo Pocket, and Drawstrings)
+  // HOODIE RENDERER (With Hood Curve volume, Kangaroo Pocket strokeRect, and Dual Drawstrings)
   const drawHoodie = useCallback(
     (ctx: CanvasRenderingContext2D, landmarks: NormalizedLandmark[], w: number, h: number, color: string) => {
       const pt = (i: number): Point2D => ({ x: landmarks[i].x * w, y: landmarks[i].y * h });
@@ -288,25 +315,22 @@ export default function UniversalTryOnModal({
       const torsoPx = Math.hypot(mh.x - ms.x, mh.y - ms.y);
       if (shPx < 10) return;
 
-      const darkShade = shadeColor(color, -45);
-      const innerHood = shadeColor(color, -25);
+      const darkShade = shadeColor(color, -25);
+      const innerHood = shadeColor(color, -15);
 
       ctx.save();
 
-      // 1. Draw Large Hood Behind Head
+      // 1. Curved hood volume behind collar (ellipse / smooth curve)
       const hoodTop = ms.y - torsoPx * 0.45;
       ctx.fillStyle = innerHood;
       ctx.strokeStyle = darkShade;
       ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.moveTo(ls.x - shPx * 0.1, ls.y);
-      ctx.quadraticCurveTo(ls.x - shPx * 0.15, hoodTop, ms.x, hoodTop - 15);
-      ctx.quadraticCurveTo(rs.x + shPx * 0.15, hoodTop, rs.x + shPx * 0.1, rs.y);
-      ctx.closePath();
+      ctx.ellipse(ms.x, hoodTop + torsoPx * 0.1, shPx * 0.4, torsoPx * 0.25, 0, Math.PI, 0);
       ctx.fill();
       ctx.stroke();
 
-      // 2. Main Hoodie Body & Long Dropped Sleeves
+      // 2. Main Hoodie Body & Sleeves
       ctx.fillStyle = color;
       ctx.strokeStyle = darkShade;
       ctx.lineWidth = Math.max(3, Math.round(shPx * 0.04));
@@ -315,8 +339,6 @@ export default function UniversalTryOnModal({
       ctx.beginPath();
       ctx.moveTo(ls.x, ls.y);
       ctx.quadraticCurveTo(ms.x, ms.y + 10, rs.x, rs.y);
-
-      // Long Sleeves extending near wrists
       ctx.lineTo(re.x + 8, re.y + 15);
       ctx.lineTo(rh.x + 12, rh.y);
       ctx.lineTo(lh.x - 12, lh.y);
@@ -326,121 +348,109 @@ export default function UniversalTryOnModal({
       ctx.fill();
       ctx.stroke();
 
-      // 3. Front Kangaroo Pouch Pocket
-      const pocketTopY = ms.y + torsoPx * 0.45;
-      const pocketBottomY = mh.y + 5;
-      const pocketWidth = shPx * 0.55;
+      // 3. Front Kangaroo Pouch Pocket (strokeRect / fillRect)
+      const pocketWidth = shPx * 0.5;
+      const pocketHeight = torsoPx * 0.22;
+      const pocketX = ms.x - pocketWidth / 2;
+      const pocketY = mh.y - pocketHeight - 10;
 
-      ctx.fillStyle = shadeColor(color, -15);
-      ctx.beginPath();
-      ctx.moveTo(ms.x - pocketWidth / 2, pocketTopY);
-      ctx.lineTo(ms.x + pocketWidth / 2, pocketTopY);
-      ctx.lineTo(ms.x + pocketWidth / 2 + 12, pocketBottomY);
-      ctx.lineTo(ms.x - pocketWidth / 2 - 12, pocketBottomY);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-
-      // Pocket Entry Slits
+      ctx.fillStyle = shadeColor(color, -12);
       ctx.strokeStyle = darkShade;
       ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(ms.x - pocketWidth / 2, pocketTopY);
-      ctx.lineTo(ms.x - pocketWidth / 2 - 12, pocketBottomY);
-      ctx.moveTo(ms.x + pocketWidth / 2, pocketTopY);
-      ctx.lineTo(ms.x + pocketWidth / 2 + 12, pocketBottomY);
-      ctx.stroke();
+      ctx.fillRect(pocketX, pocketY, pocketWidth, pocketHeight);
+      ctx.strokeRect(pocketX, pocketY, pocketWidth, pocketHeight);
 
-      // 4. Dangling Hoodie Drawstrings
+      // 4. Dual Front Drawstrings
       ctx.strokeStyle = "#FFFFFF";
       ctx.lineWidth = 3;
       ctx.lineCap = "round";
       ctx.beginPath();
-      // Left String
-      ctx.moveTo(ms.x - 14, ms.y + 8);
-      ctx.quadraticCurveTo(ms.x - 22, ms.y + 40, ms.x - 16, ms.y + torsoPx * 0.3);
-      // Right String
-      ctx.moveTo(ms.x + 14, ms.y + 8);
-      ctx.quadraticCurveTo(ms.x + 22, ms.y + 40, ms.x + 16, ms.y + torsoPx * 0.3);
+      ctx.moveTo(ms.x - 12, ms.y + 8);
+      ctx.quadraticCurveTo(ms.x - 18, ms.y + 35, ms.x - 14, ms.y + torsoPx * 0.28);
+      ctx.moveTo(ms.x + 12, ms.y + 8);
+      ctx.quadraticCurveTo(ms.x + 18, ms.y + 35, ms.x + 14, ms.y + torsoPx * 0.28);
       ctx.stroke();
 
-      // Drawstring Metal Tips
+      // Drawstring metal tips
       ctx.fillStyle = "#FFD700";
-      ctx.fillRect(ms.x - 18, ms.y + torsoPx * 0.3, 4, 8);
-      ctx.fillRect(ms.x + 14, ms.y + torsoPx * 0.3, 4, 8);
+      ctx.fillRect(ms.x - 16, ms.y + torsoPx * 0.28, 4, 8);
+      ctx.fillRect(ms.x + 12, ms.y + torsoPx * 0.28, 4, 8);
 
       ctx.restore();
     },
     []
   );
 
-  // FORMAL SHIRT RENDERER (With Pointed Collars & Button Placket)
+  // FORMAL SHIRT RENDERER (Pointed Collar Triangular Lapels, Button Placket, Full Sleeves to Wrists 15,16)
   const drawFormalShirt = useCallback(
     (ctx: CanvasRenderingContext2D, landmarks: NormalizedLandmark[], w: number, h: number, color: string) => {
       const pt = (i: number): Point2D => ({ x: landmarks[i].x * w, y: landmarks[i].y * h });
-      const ls = pt(11), rs = pt(12), le = pt(13), re = pt(14), lh = pt(23), rh = pt(24);
+      const ls = pt(11), rs = pt(12), le = pt(13), re = pt(14), lw = pt(15), rw = pt(16), lh = pt(23), rh = pt(24);
       const ms = { x: (ls.x + rs.x) / 2, y: (ls.y + rs.y) / 2 };
       const mh = { x: (lh.x + rh.x) / 2, y: (lh.y + rh.y) / 2 };
       const shPx = Math.hypot(rs.x - ls.x, rs.y - ls.y);
       const torsoPx = Math.hypot(mh.x - ms.x, mh.y - ms.y);
       if (shPx < 10) return;
 
-      const darkShade = shadeColor(color, -45);
-      const collarColor = shadeColor(color, 35);
+      const darkShade = shadeColor(color, -25);
+      const collarColor = shadeColor(color, 25);
 
       ctx.save();
       ctx.fillStyle = color;
       ctx.strokeStyle = darkShade;
       ctx.lineWidth = Math.max(2, Math.round(shPx * 0.035));
 
-      // Main Torso Cut
+      // Main Torso Cut with full sleeves to wrists (15, 16)
       ctx.beginPath();
       ctx.moveTo(ls.x, ls.y);
       ctx.lineTo(rs.x, rs.y);
       ctx.lineTo(re.x, re.y);
+      ctx.lineTo(rw.x || re.x, rw.y || re.y);
       ctx.lineTo(rh.x, rh.y);
       ctx.lineTo(lh.x, lh.y);
+      ctx.lineTo(lw.x || le.x, lw.y || le.y);
       ctx.lineTo(le.x, le.y);
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
 
-      // Center Vertical Button Placket
+      // Vertical Button Placket Line to Hemline
       ctx.fillStyle = shadeColor(color, -12);
-      ctx.fillRect(ms.x - 7, ms.y, 14, torsoPx);
+      ctx.fillRect(ms.x - 6, ms.y, 12, torsoPx);
+      ctx.strokeStyle = darkShade;
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(ms.x - 6, ms.y, 12, torsoPx);
 
-      // Buttons down center
+      // Buttons down placket
       ctx.fillStyle = "#FFFFFF";
       const numButtons = 5;
       for (let b = 1; b <= numButtons; b++) {
         const by = ms.y + (torsoPx / (numButtons + 1)) * b;
         ctx.beginPath();
-        ctx.arc(ms.x, by, 3.5, 0, Math.PI * 2);
+        ctx.arc(ms.x, by, 3, 0, Math.PI * 2);
         ctx.fill();
-        ctx.strokeStyle = "#94A3B8";
-        ctx.lineWidth = 1;
         ctx.stroke();
       }
 
-      // Crisp Pointed Collar Flaps
+      // Pointed Collar Triangular Lapels
       ctx.fillStyle = collarColor;
       ctx.strokeStyle = darkShade;
       ctx.lineWidth = 2;
 
-      // Left Collar Flap
+      // Left Collar Point
       ctx.beginPath();
       ctx.moveTo(ls.x + 8, ls.y);
-      ctx.lineTo(ms.x - 2, ms.y + 24);
-      ctx.lineTo(ms.x - 18, ms.y + 6);
+      ctx.lineTo(ms.x - 2, ms.y + 22);
+      ctx.lineTo(ms.x - 16, ms.y + 4);
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
 
-      // Right Collar Flap
+      // Right Collar Point
       ctx.beginPath();
       ctx.moveTo(rs.x - 8, rs.y);
-      ctx.lineTo(ms.x + 2, ms.y + 24);
-      ctx.lineTo(ms.x + 18, ms.y + 6);
+      ctx.lineTo(ms.x + 2, ms.y + 22);
+      ctx.lineTo(ms.x + 16, ms.y + 4);
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
@@ -450,7 +460,7 @@ export default function UniversalTryOnModal({
     []
   );
 
-  // JACKET / COAT RENDERER (With Zipper & Wide Open Lapels)
+  // JACKET / COAT RENDERER (Open Chest Lapels & Dual Chest Pocket Stitch Lines)
   const drawJacket = useCallback(
     (ctx: CanvasRenderingContext2D, landmarks: NormalizedLandmark[], w: number, h: number, color: string) => {
       const pt = (i: number): Point2D => ({ x: landmarks[i].x * w, y: landmarks[i].y * h });
@@ -461,7 +471,7 @@ export default function UniversalTryOnModal({
       const torsoPx = Math.hypot(mh.x - ms.x, mh.y - ms.y);
       if (shPx < 10) return;
 
-      const darkBorder = shadeColor(color, -50);
+      const darkBorder = shadeColor(color, -25);
 
       ctx.save();
       ctx.fillStyle = color;
@@ -470,21 +480,21 @@ export default function UniversalTryOnModal({
 
       // Broad Jacket Cut
       ctx.beginPath();
-      ctx.moveTo(ls.x - 12, ls.y - 4);
-      ctx.lineTo(rs.x + 12, rs.y - 4);
-      ctx.lineTo(re.x + 10, re.y);
-      ctx.lineTo(rh.x + 14, rh.y + 10);
-      ctx.lineTo(lh.x - 14, lh.y + 10);
-      ctx.lineTo(le.x - 10, le.y);
+      ctx.moveTo(ls.x - 10, ls.y - 4);
+      ctx.lineTo(rs.x + 10, rs.y - 4);
+      ctx.lineTo(re.x + 8, re.y);
+      ctx.lineTo(rh.x + 12, rh.y + 8);
+      ctx.lineTo(lh.x - 12, lh.y + 8);
+      ctx.lineTo(le.x - 8, le.y);
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
 
-      // Open Folded Wide Lapels
-      ctx.fillStyle = shadeColor(color, -25);
+      // Open Chest Lapels
+      ctx.fillStyle = shadeColor(color, -20);
       ctx.beginPath();
-      ctx.moveTo(ls.x - 12, ls.y - 4);
-      ctx.lineTo(ms.x - 25, ms.y + torsoPx * 0.35);
+      ctx.moveTo(ls.x - 10, ls.y - 4);
+      ctx.lineTo(ms.x - 22, ms.y + torsoPx * 0.35);
       ctx.lineTo(ms.x - 4, ms.y + torsoPx * 0.35);
       ctx.lineTo(ms.x - 4, ms.y);
       ctx.closePath();
@@ -492,42 +502,39 @@ export default function UniversalTryOnModal({
       ctx.stroke();
 
       ctx.beginPath();
-      ctx.moveTo(rs.x + 12, rs.y - 4);
-      ctx.lineTo(ms.x + 25, ms.y + torsoPx * 0.35);
+      ctx.moveTo(rs.x + 10, rs.y - 4);
+      ctx.lineTo(ms.x + 22, ms.y + torsoPx * 0.35);
       ctx.lineTo(ms.x + 4, ms.y + torsoPx * 0.35);
       ctx.lineTo(ms.x + 4, ms.y);
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
 
-      // Metallic Zipper Line down Center
-      ctx.strokeStyle = "#CBD5E1";
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(ms.x, ms.y + torsoPx * 0.35);
-      ctx.lineTo(mh.x, mh.y + 10);
-      ctx.stroke();
+      // Dual Chest Pocket Stitch Lines (strokeRect)
+      ctx.strokeStyle = darkBorder;
+      ctx.lineWidth = 2;
+      const pocketW = shPx * 0.22;
+      const pocketH = torsoPx * 0.15;
+      const pocketY = ms.y + torsoPx * 0.38;
 
-      // Zipper Pull Tab
-      ctx.fillStyle = "#94A3B8";
-      ctx.fillRect(ms.x - 3, ms.y + torsoPx * 0.4, 6, 12);
+      ctx.strokeRect(ms.x - pocketW - 14, pocketY, pocketW, pocketH);
+      ctx.strokeRect(ms.x + 14, pocketY, pocketW, pocketH);
 
       ctx.restore();
     },
     []
   );
 
-  // SWEATER RENDERER (Ribbed Knit Waist & Cuffs)
+  // SWEATER RENDERER
   const drawSweater = useCallback(
     (ctx: CanvasRenderingContext2D, landmarks: NormalizedLandmark[], w: number, h: number, color: string) => {
       const pt = (i: number): Point2D => ({ x: landmarks[i].x * w, y: landmarks[i].y * h });
       const ls = pt(11), rs = pt(12), le = pt(13), re = pt(14), lh = pt(23), rh = pt(24);
       const ms = { x: (ls.x + rs.x) / 2, y: (ls.y + rs.y) / 2 };
-      const mh = { x: (lh.x + rh.x) / 2, y: (lh.y + rh.y) / 2 };
       const shPx = Math.hypot(rs.x - ls.x, rs.y - ls.y);
       if (shPx < 10) return;
 
-      const darkKnit = shadeColor(color, -35);
+      const darkKnit = shadeColor(color, -25);
 
       ctx.save();
       ctx.fillStyle = color;
@@ -554,28 +561,18 @@ export default function UniversalTryOnModal({
       ctx.lineWidth = 5;
       ctx.stroke();
 
-      // Ribbed Waistband Hem Pattern
-      ctx.strokeStyle = darkKnit;
-      ctx.lineWidth = 2;
-      for (let rx = lh.x; rx <= rh.x; rx += 6) {
-        ctx.beginPath();
-        ctx.moveTo(rx, lh.y - 12);
-        ctx.lineTo(rx, lh.y);
-        ctx.stroke();
-      }
-
       ctx.restore();
     },
     []
   );
 
-  // TROUSERS / PANTS RENDERER
-  const drawTrousers = useCallback(
+  // BOTTOMS / TROUSERS RENDERER (Waistband anchored at 23 & 24, legs along 23->25->27 & 24->26->28, Cargo pockets)
+  const drawBottom = useCallback(
     (ctx: CanvasRenderingContext2D, landmarks: NormalizedLandmark[], w: number, h: number, color: string) => {
       const pt = (i: number): Point2D => ({ x: landmarks[i].x * w, y: landmarks[i].y * h });
       const lh = pt(23), rh = pt(24), lk = pt(25), rk = pt(26), la = pt(27) || lk, ra = pt(28) || rk;
 
-      const borderShade = shadeColor(color, -40);
+      const borderShade = shadeColor(color, -25);
 
       ctx.save();
       ctx.fillStyle = color;
@@ -583,85 +580,125 @@ export default function UniversalTryOnModal({
       ctx.lineWidth = 3;
       ctx.lineJoin = "round";
 
-      // Left Leg
+      // Left Leg Along 23->25->27
       ctx.beginPath();
       ctx.moveTo(lh.x, lh.y);
-      ctx.lineTo(lk.x - 12, lk.y);
-      ctx.lineTo(la.x - 10, la.y);
-      ctx.lineTo(la.x + 10, la.y);
-      ctx.lineTo(lk.x + 8, lk.y);
+      ctx.lineTo(lk.x - 14, lk.y);
+      ctx.lineTo(la.x - 12, la.y);
+      ctx.lineTo(la.x + 12, la.y);
+      ctx.lineTo(lk.x + 10, lk.y);
       ctx.lineTo((lh.x + rh.x) / 2, (lh.y + rh.y) / 2 + 15);
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
 
-      // Right Leg
+      // Right Leg Along 24->26->28
       ctx.beginPath();
       ctx.moveTo(rh.x, rh.y);
-      ctx.lineTo(rk.x + 12, rk.y);
-      ctx.lineTo(ra.x + 10, ra.y);
-      ctx.lineTo(ra.x - 10, ra.y);
-      ctx.lineTo(rk.x - 8, rk.y);
+      ctx.lineTo(rk.x + 14, rk.y);
+      ctx.lineTo(ra.x + 12, ra.y);
+      ctx.lineTo(ra.x - 12, ra.y);
+      ctx.lineTo(rk.x - 10, rk.y);
       ctx.lineTo((lh.x + rh.x) / 2, (lh.y + rh.y) / 2 + 15);
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
 
-      // Waistband Belt Line
-      ctx.strokeStyle = shadeColor(color, -50);
+      // Waistband Anchored at Hip Landmarks 23 & 24
+      ctx.strokeStyle = shadeColor(color, -35);
       ctx.lineWidth = 4;
       ctx.beginPath();
       ctx.moveTo(lh.x, lh.y);
       ctx.lineTo(rh.x, rh.y);
       ctx.stroke();
 
+      // Cargo Pants: Exterior lateral pocket boxes (strokeRect)
+      const pocketWidth = 24;
+      const pocketHeight = 32;
+      ctx.strokeStyle = borderShade;
+      ctx.lineWidth = 2;
+      ctx.fillStyle = shadeColor(color, -10);
+
+      // Left Cargo Pocket
+      const lCargoX = lk.x - 22;
+      const lCargoY = lk.y - 40;
+      ctx.fillRect(lCargoX, lCargoY, pocketWidth, pocketHeight);
+      ctx.strokeRect(lCargoX, lCargoY, pocketWidth, pocketHeight);
+
+      // Right Cargo Pocket
+      const rCargoX = rk.x + 2;
+      const rCargoY = rk.y - 40;
+      ctx.fillRect(rCargoX, rCargoY, pocketWidth, pocketHeight);
+      ctx.strokeRect(rCargoX, rCargoY, pocketWidth, pocketHeight);
+
       ctx.restore();
     },
     []
   );
 
-  // FUTURISTIC EYEWEAR / GOGGLES RENDERER
+  // AVIATOR SUNGLASSES / EYEWEAR (Landmarks: Nose #0, Left Eye #2, Right Eye #5, Ears #7, #8)
   const drawEyewear = useCallback(
     (ctx: CanvasRenderingContext2D, landmarks: NormalizedLandmark[], w: number, h: number, color: string) => {
       const pt = (i: number): Point2D => ({ x: landmarks[i].x * w, y: landmarks[i].y * h });
-      const le = pt(1), re = pt(2), nose = pt(0), earL = pt(7), earR = pt(8);
-      const eyeDist = Math.hypot(re.x - le.x, re.y - le.y);
-      if (eyeDist < 5) return;
+      const nose = pt(0);
+      const eyeL = pt(2) || pt(1);
+      const eyeR = pt(5) || pt(2);
+      const earL = pt(7);
+      const earR = pt(8);
+
+      const eyeMid = { x: (eyeL.x + eyeR.x) / 2, y: (eyeL.y + eyeR.y) / 2 };
+      const eyeDist = Math.hypot(eyeR.x - eyeL.x, eyeR.y - eyeL.y) || 25;
+      const angle = Math.atan2(eyeR.y - eyeL.y, eyeR.x - eyeL.x);
 
       ctx.save();
-      // Metallic Frame
-      ctx.fillStyle = "rgba(15, 23, 42, 0.9)";
+      ctx.translate(eyeMid.x, eyeMid.y);
+      ctx.rotate(angle);
+
+      // Metallic Frame & Brow Bridge Wire
+      const lensRadius = eyeDist * 0.65;
+      const borderShade = shadeColor(color, -25);
+
       ctx.strokeStyle = color;
       ctx.lineWidth = 3;
 
-      const gWidth = eyeDist * 2.4;
-      const gHeight = eyeDist * 0.9;
-      const cx = nose.x;
-      const cy = nose.y - 5;
-
-      // Wrap Goggle Frame
+      // Dual Teardrop Lenses
+      // Left Teardrop Lens
       ctx.beginPath();
-      ctx.roundRect(cx - gWidth / 2, cy - gHeight / 2, gWidth, gHeight, 10);
+      ctx.fillStyle = color;
+      ctx.globalAlpha = 0.7;
+      ctx.ellipse(-eyeDist * 0.55, lensRadius * 0.2, lensRadius, lensRadius * 1.15, 0, 0, Math.PI * 2);
       ctx.fill();
+      ctx.globalAlpha = 1.0;
+      ctx.strokeStyle = borderShade;
       ctx.stroke();
 
-      // Tinted Glass Lenses
-      ctx.fillStyle = color;
-      ctx.globalAlpha = 0.65;
+      // Right Teardrop Lens
       ctx.beginPath();
-      ctx.roundRect(cx - gWidth / 2 + 4, cy - gHeight / 2 + 4, gWidth / 2 - 6, gHeight - 8, 6);
-      ctx.roundRect(cx + 2, cy - gHeight / 2 + 4, gWidth / 2 - 6, gHeight - 8, 6);
+      ctx.globalAlpha = 0.7;
+      ctx.ellipse(eyeDist * 0.55, lensRadius * 0.2, lensRadius, lensRadius * 1.15, 0, 0, Math.PI * 2);
       ctx.fill();
-
-      // Ear Stems
       ctx.globalAlpha = 1.0;
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 2.5;
+      ctx.strokeStyle = borderShade;
+      ctx.stroke();
+
+      // Brow Bridge Wire
       ctx.beginPath();
-      ctx.moveTo(cx - gWidth / 2, cy);
-      ctx.lineTo(earL.x, earL.y);
-      ctx.moveTo(cx + gWidth / 2, cy);
-      ctx.lineTo(earR.x, earR.y);
+      ctx.moveTo(-eyeDist * 0.55, -lensRadius * 0.6);
+      ctx.lineTo(eyeDist * 0.55, -lensRadius * 0.6);
+      ctx.moveTo(-eyeDist * 0.3, -lensRadius * 0.1);
+      ctx.lineTo(eyeDist * 0.3, -lensRadius * 0.1);
+      ctx.strokeStyle = "#FFD700";
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+
+      // Temple arms extending to ears (7, 8)
+      ctx.beginPath();
+      ctx.moveTo(-eyeDist * 1.2, 0);
+      ctx.lineTo(earL.x - eyeMid.x, earL.y - eyeMid.y);
+      ctx.moveTo(eyeDist * 1.2, 0);
+      ctx.lineTo(earR.x - eyeMid.x, earR.y - eyeMid.y);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2;
       ctx.stroke();
 
       ctx.restore();
@@ -669,7 +706,49 @@ export default function UniversalTryOnModal({
     []
   );
 
-  // SKELETAL LANDMARKS VISUALIZER
+  // FOOTWEAR / SHOES RENDERER (Dynamic sneaker contours at ankles 27 and 28)
+  const drawShoes = useCallback(
+    (ctx: CanvasRenderingContext2D, landmarks: NormalizedLandmark[], w: number, h: number, color: string) => {
+      const pt = (i: number): Point2D => ({ x: landmarks[i].x * w, y: landmarks[i].y * h });
+      const ankL = pt(27);
+      const ankR = pt(28);
+
+      if (!ankL || !ankR) return;
+
+      const shoeW = 36;
+      const shoeH = 20;
+      const darkBorder = shadeColor(color, -25);
+
+      ctx.save();
+      ctx.fillStyle = color;
+      ctx.strokeStyle = darkBorder;
+      ctx.lineWidth = 2.5;
+
+      // Left Shoe Contour
+      ctx.beginPath();
+      ctx.roundRect(ankL.x - shoeW / 2 - 8, ankL.y, shoeW, shoeH, [8, 12, 4, 4]);
+      ctx.fill();
+      ctx.stroke();
+      // White Sole
+      ctx.fillStyle = "#FFFFFF";
+      ctx.fillRect(ankL.x - shoeW / 2 - 8, ankL.y + shoeH - 5, shoeW, 5);
+
+      // Right Shoe Contour
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.roundRect(ankR.x - shoeW / 2 + 8, ankR.y, shoeW, shoeH, [12, 8, 4, 4]);
+      ctx.fill();
+      ctx.stroke();
+      // White Sole
+      ctx.fillStyle = "#FFFFFF";
+      ctx.fillRect(ankR.x - shoeW / 2 + 8, ankR.y + shoeH - 5, shoeW, 5);
+
+      ctx.restore();
+    },
+    []
+  );
+
+  // SKELETAL LANDMARKS VISUALIZER (#cSkel)
   const drawSkeleton = useCallback(
     (ctx: CanvasRenderingContext2D, landmarks: NormalizedLandmark[], w: number, h: number) => {
       const pt = (i: number): Point2D => ({ x: landmarks[i].x * w, y: landmarks[i].y * h });
@@ -679,7 +758,8 @@ export default function UniversalTryOnModal({
       ];
 
       ctx.save();
-      ctx.strokeStyle = "#22d3ee";
+      // Cyan connecting skeletal lines (rgba(34,211,238,0.8), lineWidth 2)
+      ctx.strokeStyle = "rgba(34, 211, 238, 0.8)";
       ctx.lineWidth = 2;
 
       for (const [i, j] of BONES) {
@@ -692,8 +772,9 @@ export default function UniversalTryOnModal({
         }
       }
 
+      // Cyan circular joint nodes (#22d3ee, radius 4px)
       ctx.fillStyle = "#22d3ee";
-      const JOINTS = [0, 11, 12, 13, 14, 15, 16, 23, 24, 25, 26, 27, 28];
+      const JOINTS = [0, 2, 5, 7, 8, 11, 12, 13, 14, 15, 16, 23, 24, 25, 26, 27, 28];
       for (const idx of JOINTS) {
         if (landmarks[idx]) {
           const p = pt(idx);
@@ -739,7 +820,7 @@ export default function UniversalTryOnModal({
       const w = canvas.width;
       const h = canvas.height;
 
-      // Draw mirrored webcam feed (CSS scaleX(-1))
+      // Draw mirrored webcam feed (CSS transform scaleX(-1))
       ctx.clearRect(0, 0, w, h);
       ctx.drawImage(video, 0, 0, w, h);
 
@@ -749,7 +830,8 @@ export default function UniversalTryOnModal({
       if (poseData && poseData.isPosePresent && poseData.rawLandmarks && poseData.rawLandmarks.length >= 25) {
         setTrackingConfidence(Math.round(poseData.confidence * 100));
 
-        const lm = poseData.rawLandmarks;
+        // Apply EMA filter (alpha = 0.65)
+        const lm = applyEMA(poseData.rawLandmarks);
         const ls = lm[11], rs = lm[12], lh = lm[23], rh = lm[24];
         const shPx = Math.hypot((rs.x - ls.x) * w, (rs.y - ls.y) * h);
         const torsoPx = Math.hypot(((lh.x + rh.x) / 2 - (ls.x + rs.x) / 2) * w, ((lh.y + rh.y) / 2 - (ls.y + rs.y) / 2) * h);
@@ -768,7 +850,7 @@ export default function UniversalTryOnModal({
         );
         setRecommendedSize(sizing.size);
 
-        // Branching Garment Vector Renderer
+        // Branching Garment & Accessory Vector Renderer
         const cat = activeProduct.category;
         if (cat === "hoodie") {
           drawHoodie(ctx, lm, w, h, selectedColor);
@@ -779,14 +861,16 @@ export default function UniversalTryOnModal({
         } else if (cat === "sweater") {
           drawSweater(ctx, lm, w, h, selectedColor);
         } else if (cat === "bottom") {
-          drawTrousers(ctx, lm, w, h, selectedColor);
+          drawBottom(ctx, lm, w, h, selectedColor);
         } else if (cat === "eyewear") {
           drawEyewear(ctx, lm, w, h, selectedColor);
+        } else if (cat === "shoes") {
+          drawShoes(ctx, lm, w, h, selectedColor);
         } else {
           drawTShirt(ctx, lm, w, h, selectedColor);
         }
 
-        // Draw Skeletal Landmarks
+        // Draw Skeletal Landmarks (#cSkel)
         if (showSkeleton) {
           drawSkeleton(ctx, lm, w, h);
         }
@@ -804,13 +888,15 @@ export default function UniversalTryOnModal({
     selectedColor,
     showSkeleton,
     activeProduct,
+    applyEMA,
     drawTShirt,
     drawHoodie,
     drawFormalShirt,
     drawJacket,
     drawSweater,
-    drawTrousers,
+    drawBottom,
     drawEyewear,
+    drawShoes,
     drawSkeleton,
   ]);
 
@@ -864,7 +950,8 @@ export default function UniversalTryOnModal({
           transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
           className="relative w-full max-w-6xl h-[92vh] max-h-[860px] bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col"
         >
-          <video ref={videoRef} playsInline muted autoPlay className="hidden" />
+          {/* Hidden HTML5 video element */}
+          <video id="vid" ref={videoRef} playsInline autoPlay muted className="hidden" />
 
           {/* Top Control Bar */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-white/95 backdrop-blur-sm z-20">
@@ -925,7 +1012,7 @@ export default function UniversalTryOnModal({
               style={{ transform: "scaleX(-1)" }}
             />
 
-            {/* HUD Overlay Panels (Telemetry & Garment Customizer) */}
+            {/* HUD Overlay Panels */}
             <div className="absolute top-4 right-4 z-20 flex flex-col gap-2.5 pointer-events-auto">
               {/* Telemetry Card */}
               <div className="bg-white/95 backdrop-blur-md rounded-2xl p-3.5 border border-slate-200 shadow-xl text-xs font-mono space-y-2 w-64">

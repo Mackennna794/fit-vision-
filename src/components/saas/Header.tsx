@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Command, Store, Zap } from "lucide-react";
+import { motion } from "framer-motion";
+import { Command, Store, LayoutDashboard, Zap } from "lucide-react";
 import CommandPalette from "./CommandPalette";
+import Link from "next/link";
 
 interface HeaderProps {
-  onOpenPricing: () => void;
+  onOpenPricing?: () => void;
 }
 
 export default function Header({ onOpenPricing }: HeaderProps) {
@@ -41,7 +42,7 @@ export default function Header({ onOpenPricing }: HeaderProps) {
         transition={{ duration: 0.5, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
         className="fixed top-0 inset-x-0 z-40 flex items-center justify-between px-6 lg:px-10"
         style={{
-          height: "var(--header-height)",
+          height: "var(--header-height, 64px)",
           background: scrolled
             ? "rgba(255,255,255,0.95)"
             : "rgba(248,249,250,0.80)",
@@ -54,11 +55,7 @@ export default function Header({ onOpenPricing }: HeaderProps) {
         role="banner"
       >
         {/* Logo mark */}
-        <a
-          href="/"
-          className="flex items-center gap-2.5 group"
-          aria-label="FitVision home"
-        >
+        <Link href="/" className="flex items-center gap-2.5 group" aria-label="FitVision home">
           <div
             className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-black"
             style={{
@@ -69,36 +66,38 @@ export default function Header({ onOpenPricing }: HeaderProps) {
             FV
           </div>
           <span
-            className="text-[17px] font-bold tracking-[-0.03em] text-fv-obsidian"
+            className="text-[17px] font-bold tracking-[-0.03em] text-slate-900"
             style={{ fontFamily: "var(--font-inter)" }}
           >
             FitVision
           </span>
-        </a>
+        </Link>
 
-        {/* Center nav */}
-        <nav
-          className="hidden md:flex items-center gap-1"
-          aria-label="Main navigation"
-        >
-          {[
-            { label: "Platform", href: "#platform" },
-            { label: "How it Works", href: "#how-it-works" },
-            { label: "Pricing", href: "#pricing" },
-            { label: "Docs", href: "#integration" },
-          ].map((link) => (
-            <a
-              key={link.label}
-              href={link.href}
-              className="px-3.5 py-2 rounded-lg text-[14px] font-medium text-fv-slate hover:text-fv-obsidian hover:bg-fv-chrome-light transition-colors duration-150"
-              onClick={(e) => {
-                e.preventDefault();
-                document.querySelector(link.href)?.scrollIntoView({ behavior: "smooth" });
-              }}
-            >
-              {link.label}
-            </a>
-          ))}
+        {/* Center nav with required links */}
+        <nav className="hidden md:flex items-center gap-1" aria-label="Main navigation">
+          <Link
+            href="/store"
+            className="px-3.5 py-2 rounded-lg text-[14px] font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-100 transition-colors duration-150 flex items-center gap-1.5"
+          >
+            <Store className="w-3.5 h-3.5 text-blue-600" />
+            <span>AuraMart Store</span>
+          </Link>
+
+          <Link
+            href="/dashboard"
+            className="px-3.5 py-2 rounded-lg text-[14px] font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-100 transition-colors duration-150 flex items-center gap-1.5"
+          >
+            <LayoutDashboard className="w-3.5 h-3.5 text-blue-600" />
+            <span>Seller Dashboard</span>
+          </Link>
+
+          <a
+            href="#pricing"
+            className="px-3.5 py-2 rounded-lg text-[14px] font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-100 transition-colors duration-150 flex items-center gap-1.5"
+          >
+            <Zap className="w-3.5 h-3.5 text-amber-500" />
+            <span>Enterprise B2B</span>
+          </a>
         </nav>
 
         {/* Right actions */}
@@ -107,7 +106,7 @@ export default function Header({ onOpenPricing }: HeaderProps) {
           <button
             id="header-cmd-palette-btn"
             onClick={() => setPaletteOpen(true)}
-            className="hidden sm:flex items-center gap-2 px-3 py-2 rounded-lg text-[13px] font-medium text-fv-muted border border-fv-border bg-white hover:bg-fv-alabaster transition-colors duration-150"
+            className="hidden sm:flex items-center gap-2 px-3 py-2 rounded-lg text-[13px] font-medium text-slate-500 border border-slate-200 bg-white hover:bg-slate-50 transition-colors duration-150"
             aria-label="Open command palette (⌘K)"
             title="Command palette"
           >
@@ -122,31 +121,18 @@ export default function Header({ onOpenPricing }: HeaderProps) {
             </span>
           </button>
 
-          {/* Mobile cmd palette */}
-          <button
-            className="sm:hidden w-9 h-9 rounded-lg flex items-center justify-center border border-fv-border bg-white hover:bg-fv-alabaster transition-colors"
-            onClick={() => setPaletteOpen(true)}
-            aria-label="Open command palette"
-          >
-            <Command className="w-4 h-4 text-fv-muted" />
-          </button>
-
-          {/* AuraMart link */}
-          <a
-            href="/store"
-            className="hidden sm:flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[13px] font-medium text-fv-slate border border-fv-border bg-white hover:bg-fv-alabaster transition-colors duration-150"
-            id="header-auramart-link"
-          >
-            <Store className="w-3.5 h-3.5" />
-            AuraMart
-          </a>
-
           {/* CTA */}
           <motion.button
             id="header-get-api-key-btn"
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            onClick={onOpenPricing}
+            onClick={() => {
+              if (onOpenPricing) onOpenPricing();
+              else {
+                const el = document.getElementById("pricing");
+                if (el) el.scrollIntoView({ behavior: "smooth" });
+              }
+            }}
             className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-[13px] font-semibold text-white"
             style={{
               background: "linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)",
@@ -163,7 +149,7 @@ export default function Header({ onOpenPricing }: HeaderProps) {
       <CommandPalette
         open={paletteOpen}
         onClose={() => setPaletteOpen(false)}
-        onOpenPricing={onOpenPricing}
+        onOpenPricing={onOpenPricing || (() => {})}
       />
     </>
   );

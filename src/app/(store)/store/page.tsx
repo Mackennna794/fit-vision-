@@ -8,15 +8,13 @@ import {
   Sliders,
   CheckCircle2,
   X,
-  Plus,
-  Minus,
-  Trash2,
-  ArrowRight,
   ShieldCheck,
+  Filter,
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { ARProduct } from "@/components/ar/UniversalTryOnModal";
-import SkinToneSelector, { SKIN_TONES, SkinToneData } from "@/components/ar/SkinToneSelector";
+import SkinToneSelector, { SKIN_TONES, SkinToneData, ColorOption } from "@/components/ar/SkinToneSelector";
+import CartDrawer, { CartItem } from "@/components/store/CartDrawer";
 
 // SSR Bypass for AR Try-On Modal
 const UniversalTryOnModal = dynamic(
@@ -31,30 +29,30 @@ interface StoreProduct extends ARProduct {
 const DEFAULT_STORE_PRODUCTS: StoreProduct[] = [
   {
     id: "prod-1",
-    name: "Aura Minimalist Overshirt",
-    category: "top",
+    name: "Aura Minimalist Royal Blue Overshirt",
+    category: "shirt",
     price: 148.0,
     image_url: "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=600&q=80",
     description: "Tailored organic cotton overshirt with dynamic shoulder drape and matte horn buttons.",
-    color: "#2563EB",
+    color: "#4169E1",
     fitStyle: "regular",
     garmentDimensions: { shoulderWidthCm: 46, chestWidthCm: 106, lengthCm: 74 },
   },
   {
     id: "prod-2",
-    name: "Obsidian Heavyweight Hoodie",
-    category: "top",
+    name: "Obsidian Heavyweight Cyber Hoodie",
+    category: "hoodie",
     price: 175.0,
     image_url: "https://images.unsplash.com/photo-1556905055-8f358a7a47b2?w=600&q=80",
     description: "450gsm double-knit fleece hoodie with structured hood volume and relaxed dropped shoulders.",
-    color: "#0F172A",
+    color: "#2563EB",
     fitStyle: "oversized",
     garmentDimensions: { shoulderWidthCm: 50, chestWidthCm: 114, lengthCm: 76 },
   },
   {
     id: "prod-3",
     name: "Emerald Waterproof Shell Jacket",
-    category: "top",
+    category: "jacket",
     price: 290.0,
     image_url: "https://images.unsplash.com/photo-1544441893-675973e31985?w=600&q=80",
     description: "3-layer seam-sealed technical shell with taped seams, gold metallic trim, and storm visor.",
@@ -64,7 +62,7 @@ const DEFAULT_STORE_PRODUCTS: StoreProduct[] = [
   },
   {
     id: "prod-4",
-    name: "Raw Denim Selvedge Jeans",
+    name: "Raw Denim Selvedge Trousers",
     category: "bottom",
     price: 210.0,
     image_url: "https://images.unsplash.com/photo-1541099649105-f69ad21f3246?w=600&q=80",
@@ -75,8 +73,8 @@ const DEFAULT_STORE_PRODUCTS: StoreProduct[] = [
   },
   {
     id: "prod-5",
-    name: "Terracotta Knit Overshirt",
-    category: "top",
+    name: "Terracotta Wool Knit Sweater",
+    category: "sweater",
     price: 165.0,
     image_url: "https://images.unsplash.com/photo-1576995853123-5a10305d93c0?w=600&q=80",
     description: "Warm terracotta structured knit shirt crafted from breathable merino wool blend.",
@@ -84,25 +82,66 @@ const DEFAULT_STORE_PRODUCTS: StoreProduct[] = [
     fitStyle: "regular",
     garmentDimensions: { shoulderWidthCm: 45, chestWidthCm: 104, lengthCm: 72 },
   },
+  {
+    id: "prod-6",
+    name: "Sage Green Minimalist Jacket",
+    category: "jacket",
+    price: 220.0,
+    image_url: "https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=600&q=80",
+    description: "Lightweight structured sage jacket with concealed placket and utility chest pockets.",
+    color: "#9CAF88",
+    fitStyle: "regular",
+  },
+  {
+    id: "prod-7",
+    name: "Dusty Blue Relaxed Hoodie",
+    category: "hoodie",
+    price: 135.0,
+    image_url: "https://images.unsplash.com/photo-1509967419530-da38b4704bc6?w=600&q=80",
+    description: "Dusty blue French terry hoodie with double-layer hood and kangaroo pouch pocket.",
+    color: "#8A9EA7",
+    fitStyle: "oversized",
+  },
+  {
+    id: "prod-8",
+    name: "Burgundy Velvet Formal Shirt",
+    category: "shirt",
+    price: 185.0,
+    image_url: "https://images.unsplash.com/photo-1598033129183-c4f50c736f10?w=600&q=80",
+    description: "Rich burgundy tailored formal shirt with pointed collar lapels and French cuffs.",
+    color: "#800020",
+    fitStyle: "tight",
+  },
+  {
+    id: "prod-9",
+    name: "Aviator Cyber Sunglasses",
+    category: "eyewear",
+    price: 95.0,
+    image_url: "https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=600&q=80",
+    description: "Metallic teardrop frames with UV-blocking tinted glass lenses and brow bridge wire.",
+    color: "#00F3FF",
+    fitStyle: "regular",
+  },
 ];
 
 export default function AuraMartStorefront() {
-  const [products, setProducts] = useState<StoreProduct[]>(DEFAULT_STORE_PRODUCTS);
+  const [products] = useState<StoreProduct[]>(DEFAULT_STORE_PRODUCTS);
   const [apiKey, setApiKey] = useState<string>("");
   const [isApiKeyVerified, setIsApiKeyVerified] = useState<boolean>(false);
   const [partnerTier, setPartnerTier] = useState<string>("");
 
   // Skin Tone State
-  const [activeSkinTone, setActiveSkinTone] = useState<SkinToneData>(SKIN_TONES[2]);
-  const [selectedColorHex, setSelectedColorHex] = useState<string>("#2563EB");
+  const [activeSkinTone, setActiveSkinTone] = useState<SkinToneData>(SKIN_TONES[2]); // MEDIUM default
+  const [selectedColor, setSelectedColor] = useState<ColorOption | null>(null);
+  const [filterActive, setFilterActive] = useState<boolean>(false);
 
   // AR Modal State
   const [isARModalOpen, setIsARModalOpen] = useState<boolean>(false);
   const [activeARProduct, setActiveARProduct] = useState<ARProduct | null>(null);
 
-  // Cart State
+  // Cart State & Drawer
   const [isCartOpen, setIsCartOpen] = useState<boolean>(false);
-  const [cartItems, setCartItems] = useState<{ product: ARProduct; size: string; quantity: number }[]>([]);
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [isAdminDrawerOpen, setIsAdminDrawerOpen] = useState<boolean>(false);
 
   // B2B Key Verification
@@ -155,27 +194,69 @@ export default function AuraMartStorefront() {
     }
   }, [cartItems]);
 
+  const handleToneSelect = (tone: SkinToneData) => {
+    setActiveSkinTone(tone);
+    setSelectedColor(tone.recommendedColors[0]);
+    setFilterActive(true);
+    scrollToCatalog();
+  };
+
+  const handleColorSelect = (color: ColorOption) => {
+    setSelectedColor(color);
+    setFilterActive(true);
+    scrollToCatalog();
+  };
+
+  const scrollToCatalog = () => {
+    const el = document.getElementById("catalog");
+    if (el) el.scrollIntoView({ behavior: "smooth" });
+  };
+
   const handleOpenAR = (product: StoreProduct) => {
     setActiveARProduct({
       ...product,
-      color: selectedColorHex || product.color,
+      color: selectedColor ? selectedColor.hex : product.color,
     });
     setIsARModalOpen(true);
   };
 
   const handleAddToCart = (product: ARProduct, size: string) => {
     setCartItems((prev) => {
-      const existing = prev.find((item) => item.product.id === product.id && item.size === size);
-      if (existing) {
-        return prev.map((item) =>
-          item.product.id === product.id && item.size === size
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
-        );
+      const existingIdx = prev.findIndex(
+        (item) => item.product.id === product.id && item.size === size
+      );
+      if (existingIdx >= 0) {
+        const copy = [...prev];
+        copy[existingIdx].quantity += 1;
+        return copy;
       }
-      return [...prev, { product, size, quantity: 1 }];
+      return [
+        ...prev,
+        {
+          product,
+          size,
+          quantity: 1,
+          colorHex: selectedColor ? selectedColor.hex : product.color,
+          colorName: selectedColor ? selectedColor.name : undefined,
+        },
+      ];
     });
     setIsCartOpen(true);
+  };
+
+  const handleUpdateQuantity = (index: number, newQty: number) => {
+    setCartItems((prev) => {
+      if (newQty <= 0) {
+        return prev.filter((_, i) => i !== index);
+      }
+      const copy = [...prev];
+      copy[index].quantity = newQty;
+      return copy;
+    });
+  };
+
+  const handleRemoveCartItem = (index: number) => {
+    setCartItems((prev) => prev.filter((_, i) => i !== index));
   };
 
   const isBestSkinMatch = (productColorHex?: string) => {
@@ -185,9 +266,14 @@ export default function AuraMartStorefront() {
     );
   };
 
-  const cartSubtotal = cartItems.reduce((acc, item) => acc + item.product.price * item.quantity, 0);
-  const freeShippingThreshold = 250;
-  const freeShippingProgress = Math.min(100, (cartSubtotal / freeShippingThreshold) * 100);
+  // Catalog Filtering logic
+  const filteredProducts = products.filter((p) => {
+    if (!filterActive || !selectedColor) return true;
+    return (
+      p.color?.toLowerCase() === selectedColor.hex.toLowerCase() ||
+      isBestSkinMatch(p.color)
+    );
+  });
 
   return (
     <div className="min-h-screen bg-white text-slate-900 font-sans selection:bg-slate-900 selection:text-white">
@@ -258,34 +344,68 @@ export default function AuraMartStorefront() {
           <div className="lg:col-span-12">
             <SkinToneSelector
               activeSkinToneId={activeSkinTone.id}
-              activeColorHex={selectedColorHex}
-              onSelectTone={(tone) => setActiveSkinTone(tone)}
-              onSelectColor={(col) => setSelectedColorHex(col.hex)}
+              activeColorHex={selectedColor?.hex}
+              onSelectTone={handleToneSelect}
+              onSelectColor={handleColorSelect}
               showPosterMode={true}
             />
           </div>
         </div>
       </section>
 
+      {/* ─── Sticky Filter Banner ───────────────────────────────────── */}
+      {filterActive && selectedColor && (
+        <div className="sticky top-[57px] z-20 bg-slate-900 text-white shadow-lg border-y border-slate-800 py-3 px-6">
+          <div className="max-w-7xl mx-auto flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span
+                className="w-4 h-4 rounded-full border border-white/20 shrink-0"
+                style={{ backgroundColor: selectedColor.hex }}
+              />
+              <span className="text-xs font-bold tracking-wide">
+                Filtered by: <strong className="text-amber-400">{selectedColor.name}</strong> • Best Match for{" "}
+                <strong className="text-blue-400">{activeSkinTone.label}</strong> Skin
+              </span>
+            </div>
+
+            <button
+              onClick={() => {
+                setFilterActive(false);
+                setSelectedColor(null);
+              }}
+              className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-semibold text-slate-200 transition-colors"
+            >
+              <X className="w-3.5 h-3.5" />
+              <span>Clear Filter</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ─── Product Catalog Grid ────────────────────────────────────── */}
-      <section className="max-w-7xl mx-auto px-6 py-16">
+      <section id="catalog" className="max-w-7xl mx-auto px-6 py-16 scroll-mt-24">
         <div className="flex items-center justify-between mb-10">
           <div>
             <h2 className="text-2xl font-black tracking-tight text-slate-900">
-              Curated Catalog ({products.length})
+              Curated Catalog ({filteredProducts.length})
             </h2>
-            <span className="text-xs text-slate-400 font-medium">
+            <span className="text-xs text-slate-500 font-medium">
               Filtered for <strong className="text-blue-600">{activeSkinTone.label}</strong> Skin Tone Palette
             </span>
           </div>
 
-          <span className="text-xs text-slate-400 font-medium hidden sm:inline">
-            Showing all categories • Real-time AR unlocked
-          </span>
+          <div className="flex items-center gap-2">
+            {filterActive && (
+              <span className="text-xs font-bold text-amber-600 bg-amber-50 px-3 py-1 rounded-full border border-amber-200 flex items-center gap-1">
+                <Filter className="w-3 h-3" />
+                <span>Active Filter</span>
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {products.map((item) => {
+          {filteredProducts.map((item) => {
             const isMatch = isBestSkinMatch(item.color);
             return (
               <div
@@ -313,7 +433,7 @@ export default function AuraMartStorefront() {
                     {isMatch && (
                       <span className="absolute top-3 right-3 bg-amber-500 text-slate-950 font-black px-2.5 py-1 rounded-full text-[10px] uppercase tracking-wider shadow-md flex items-center gap-1">
                         <Sparkles className="w-3 h-3 text-slate-950" />
-                        Best Match
+                        ⭐ 98% Match for Your Skin Tone
                       </span>
                     )}
                   </div>
@@ -434,98 +554,16 @@ export default function AuraMartStorefront() {
         </div>
       )}
 
-      {/* ─── Persistent Shopping Cart Slide-Over Drawer ──────────────────── */}
-      {isCartOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex justify-end">
-          <div className="w-full max-w-md bg-white h-full shadow-2xl p-6 flex flex-col justify-between overflow-y-auto">
-            <div>
-              <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-6">
-                <div className="flex items-center gap-2">
-                  <ShoppingBag className="w-5 h-5 text-slate-900" />
-                  <h3 className="text-base font-extrabold text-slate-900">Your Cart</h3>
-                </div>
-                <button
-                  onClick={() => setIsCartOpen(false)}
-                  className="p-1 rounded-lg text-slate-400 hover:text-slate-900"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
+      {/* Persistent Shopping Cart Slide-Over Drawer */}
+      <CartDrawer
+        isOpen={isCartOpen}
+        onClose={() => setIsCartOpen(false)}
+        items={cartItems}
+        onUpdateQuantity={handleUpdateQuantity}
+        onRemoveItem={handleRemoveCartItem}
+      />
 
-              <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80 mb-6 text-xs">
-                <div className="flex justify-between mb-1.5 font-bold text-slate-700">
-                  <span>Free Express Shipping</span>
-                  <span>
-                    {cartSubtotal >= freeShippingThreshold
-                      ? "Unlocked!"
-                      : `$${(freeShippingThreshold - cartSubtotal).toFixed(2)} away`}
-                  </span>
-                </div>
-                <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-blue-600 rounded-full transition-all duration-300"
-                    style={{ width: `${freeShippingProgress}%` }}
-                  />
-                </div>
-              </div>
-
-              {cartItems.length === 0 ? (
-                <div className="text-center py-16 text-slate-400 text-xs">
-                  Your bag is empty. Explore the collection above!
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {cartItems.map((item, idx) => (
-                    <div
-                      key={`${item.product.id}-${item.size}-${idx}`}
-                      className="flex items-center justify-between border-b border-slate-100 pb-4"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-14 h-16 rounded-xl bg-slate-100 overflow-hidden shrink-0">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={item.product.image_url}
-                            alt={item.product.name}
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                        <div>
-                          <h4 className="text-xs font-bold text-slate-900">{item.product.name}</h4>
-                          <span className="text-[11px] text-slate-500 block mt-0.5">
-                            Size: <strong className="text-slate-900">{item.size}</strong> • ${item.product.price.toFixed(2)}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-slate-900">
-                          ${(item.product.price * item.quantity).toFixed(2)}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="border-t border-slate-100 pt-4 space-y-3">
-              <div className="flex items-center justify-between text-sm font-bold text-slate-900">
-                <span>Subtotal</span>
-                <span>${cartSubtotal.toFixed(2)}</span>
-              </div>
-              <button
-                disabled={cartItems.length === 0}
-                className="w-full py-3.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold flex items-center justify-center gap-2 disabled:opacity-50 transition-colors shadow-md"
-              >
-                <span>Proceed to Checkout</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ─── Phase 3 AR Fit Engine Modal ────────────────────────────────── */}
+      {/* Phase 3 AR Fit Engine Modal */}
       {isARModalOpen && (
         <UniversalTryOnModal
           isOpen={isARModalOpen}
