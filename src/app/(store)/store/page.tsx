@@ -15,6 +15,8 @@ import dynamic from "next/dynamic";
 import { ARProduct } from "@/components/ar/UniversalTryOnModal";
 import SkinToneSelector, { SKIN_TONES, SkinToneData, ColorOption } from "@/components/ar/SkinToneSelector";
 import CartDrawer, { CartItem } from "@/components/store/CartDrawer";
+import { ProductReviewsSection } from "@/components/store/ProductReviewsSection";
+import Link from "next/link";
 
 // SSR Bypass for AR Try-On Modal
 const UniversalTryOnModal = dynamic(
@@ -281,11 +283,19 @@ export default function AuraMartStorefront() {
       <header className="border-b border-slate-100 bg-slate-50/50 backdrop-blur-md sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <span className="text-xl font-black tracking-tighter text-slate-900 font-mono">
+            <Link href="/" className="flex items-center gap-2 group" title="Return to FitVision Home">
+              <img
+                src="/fitvision-logo.png"
+                alt="FitVision Logo"
+                className="w-8 h-8 object-contain rounded-lg shadow-sm group-hover:scale-105 transition-transform"
+              />
+              <span className="text-base font-extrabold tracking-tight text-slate-900">
+                Fit<span className="text-blue-600">Vision</span>
+              </span>
+            </Link>
+            <span className="text-slate-300">/</span>
+            <span className="text-sm font-black tracking-tighter text-slate-800 font-mono">
               AURA<span className="text-blue-600">MART</span>
-            </span>
-            <span className="text-xs font-semibold text-slate-400 pl-3 border-l border-slate-200">
-              Scandinavian Minimalist Retail
             </span>
           </div>
 
@@ -477,6 +487,11 @@ export default function AuraMartStorefront() {
             );
           })}
         </div>
+      </section>
+
+      {/* ─── Social Circle Reviews & AI Fake Review Shield Section ───────── */}
+      <section className="max-w-7xl mx-auto px-6 py-12 border-t border-slate-100">
+        <ProductReviewsSection productName="Aura Store Collection" />
       </section>
 
       {/* ─── Merchant B2B Integration Admin Drawer ─────────────────────── */}

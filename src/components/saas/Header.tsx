@@ -54,19 +54,15 @@ export default function Header({ onOpenPricing }: HeaderProps) {
         }}
         role="banner"
       >
-        {/* Logo mark */}
+        {/* FitVision Official Metallic FV Logo Mark */}
         <Link href="/" className="flex items-center gap-2.5 group" aria-label="FitVision home">
-          <div
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-black"
-            style={{
-              background: "linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)",
-              boxShadow: "0 2px 8px rgba(37,99,235,0.35)",
-            }}
-          >
-            FV
-          </div>
+          <img
+            src="/fitvision-logo.png"
+            alt="FitVision Logo"
+            className="w-9 h-9 object-contain rounded-xl shadow-md shadow-blue-500/20 group-hover:scale-105 transition-transform duration-200"
+          />
           <span
-            className="text-[17px] font-bold tracking-[-0.03em] text-slate-900"
+            className="text-[18px] font-extrabold tracking-[-0.03em] bg-clip-text text-transparent bg-gradient-to-r from-slate-900 via-blue-900 to-slate-900"
             style={{ fontFamily: "var(--font-inter)" }}
           >
             FitVision
